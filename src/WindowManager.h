@@ -34,6 +34,7 @@ public:
 	virtual void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) = 0;
 
 	virtual void mouseCallback(GLFWwindow *window, int button, int action, int mods) = 0;
+	virtual void scrollCallback(GLFWwindow *window, double dX, double dY) = 0;
 
 	virtual void resizeCallback(GLFWwindow *window, int in_width, int in_height) = 0;
 
@@ -78,6 +79,7 @@ private:
 	// This is a common trick or `idiom` that makes it possible
 	static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 	static void mouse_callback(GLFWwindow *window, int button, int action, int mods);
+	static void scroll_callback(GLFWwindow *window, double dX, double dY);
 	static void resize_callback(GLFWwindow *window, int in_width, int in_height);
 
 };

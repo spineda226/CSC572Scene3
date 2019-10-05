@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <glm/gtc/type_ptr.hpp>
-#include <tiny_obj_loader/tiny_obj_loader.h>
+#include "tiny_obj_loader.h"
 
 class Program;
 
@@ -16,9 +16,12 @@ public:
 	Shape();
 	virtual ~Shape();
 	void createShape(tinyobj::shape_t & shape);
-	void init();
+	void loadMesh(const std::string &meshName);
+	void loadSingleShapeMesh(const std::string &meshName);
 	void measure();
 	void allocNorms();
+	void resize();
+	void init();
 	void draw(const std::shared_ptr<Program> prog) const;
 	glm::vec3 min;
 	glm::vec3 max;

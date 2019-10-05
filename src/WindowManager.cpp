@@ -47,7 +47,7 @@ bool WindowManager::init(int const width, int const height)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 
 	// Create a windowed mode window and its OpenGL context.
-	windowHandle = glfwCreateWindow(width, height, "hello photons", nullptr, nullptr);
+	windowHandle = glfwCreateWindow(width, height, "Scene 3", nullptr, nullptr);
 	if (! windowHandle)
 	{
 		glfwTerminate();
@@ -72,6 +72,7 @@ bool WindowManager::init(int const width, int const height)
 	glfwSetKeyCallback(windowHandle, key_callback);
 	glfwSetMouseButtonCallback(windowHandle, mouse_callback);
 	glfwSetFramebufferSizeCallback(windowHandle, resize_callback);
+   glfwSetScrollCallback(windowHandle, scroll_callback);
 
 	return true;
 }
@@ -105,6 +106,14 @@ void WindowManager::mouse_callback(GLFWwindow * window, int button, int action, 
 	if (instance && instance->callbacks)
 	{
 		instance->callbacks->mouseCallback(window, button, action, mods);
+	}
+}
+
+void WindowManager::scroll_callback(GLFWwindow * window, double dX, double dY)
+{
+	if (instance && instance->callbacks)
+	{
+		instance->callbacks->scrollCallback(window, dX, dY);
 	}
 }
 

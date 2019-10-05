@@ -22,6 +22,163 @@ Shape::~Shape()
 {
 }
 
+void Shape::loadMesh(const string &meshName)
+{
+	vector<tinyobj::shape_t> shapes;
+	vector<tinyobj::material_t> objMaterials;
+	string errStr;
+	bool rc = tinyobj::LoadObj(shapes, objMaterials, errStr, meshName.c_str());
+
+	if (! rc)
+	{
+		cerr << errStr << endl;
+	}
+	else if (shapes.size())
+	{
+		posBuf = shapes[0].mesh.positions;
+		norBuf = shapes[0].mesh.normals;
+		texBuf = shapes[0].mesh.texcoords;
+		eleBuf = shapes[0].mesh.indices;
+	}
+}
+
+// Load geometry of a multiple shape mesh
+void Shape::loadSingleShapeMesh(const string &meshName)
+{
+	vector<tinyobj::shape_t> TOshapes;
+	vector<tinyobj::material_t> objMaterials;
+	string errStr;
+	bool rc = tinyobj::LoadObj(TOshapes, objMaterials, errStr, meshName.c_str());
+	if (! rc)
+	{
+		cerr << errStr << endl;
+	}
+	else 
+	{
+		createShape(TOshapes[0]);
+		measure();
+		init();
+	}	
+}
+
+void Shape::resize()
+{
+	float minX, minY, minZ;
+	float maxX, maxY, maxZ;
+	float scaleX, scaleY, scaleZ;
+	float shiftX, shiftY, shiftZ;
+	float epsilon = 0.001f;
+
+	minX = minY = minZ = 1.1754E+38F;
+	maxX = maxY = maxZ = -1.1754E+38F;
+
+	// Go through all vertices to determine min and max of each dimension
+	for (size_t v = 0; v < posBuf.size() / 3; v++)
+	{
+		if (posBuf[3*v+0] < minX) minX = posBuf[3*v+0];
+		if (posBuf[3*v+0] > maxX) maxX = posBuf[3*v+0];
+
+		if (posBuf[3*v+1] < minY) minY = posBuf[3*v+1];
+		if (posBuf[3*v+1] > maxY) maxY = posBuf[3*v+1];
+
+		if (posBuf[3*v+2] < minZ) minZ = posBuf[3*v+2];
+		if (posBuf[3*v+2] > maxZ) maxZ = posBuf[3*v+2];
+	}
+
+	// From min and max compute necessary scale and shift for each dimension
+	float maxExtent, xExtent, yExtent, zExtent;
+	xExtent = maxX-minX;
+	yExtent = maxY-minY;
+	zExtent = maxZ-minZ;
+	if (xExtent >= yExtent && xExtent >= zExtent)
+	{
+		maxExtent = xExtent;
+	}
+	if (yExtent >= xExtent && yExtent >= zExtent)
+	{
+		maxExtent = yExtent;
+	}
+	if (zExtent >= xExtent && zExtent >= yExtent)
+	{
+		maxExtent = zExtent;
+	}
+	scaleX = 2.0f / maxExtent;
+	shiftX = minX + (xExtent / 2.0f);
+	scaleY = 2.0f / maxExtent;
+	shiftY = minY + (yExtent / 2.0f);
+	scaleZ = 2.0f / maxExtent;
+	shiftZ = minZ + (zExtent / 2.0f);
+
+	// Go through all verticies shift and scale them
+	for (size_t v = 0; v < posBuf.size() / 3; v++)
+	{
+		posBuf[3*v+0] = (posBuf[3*v+0] - shiftX) * scaleX;
+		assert(posBuf[3*v+0] >= -1.0f - epsilon);
+		assert(posBuf[3*v+0] <= 1.0f + epsilon);
+		posBuf[3*v+1] = (posBuf[3*v+1] - shiftY) * scaleY;
+		assert(posBuf[3*v+1] >= -1.0f - epsilon);
+		assert(posBuf[3*v+1] <= 1.0f + epsilon);
+		posBuf[3*v+2] = (posBuf[3*v+2] - shiftZ) * scaleZ;
+		assert(posBuf[3*v+2] >= -1.0f - epsilon);
+		assert(posBuf[3*v+2] <= 1.0f + epsilon);
+	}
+}
+
+// Load geometry of a multiple shape mesh
+void loadMultipleShapeMesh(shared_ptr<vector<shared_ptr<Shape>>> shapes,
+			  glm::vec3 *gMin, glm::vec3 *gMax, const string &meshName)
+{
+	shared_ptr<Shape> shape;
+	vector<tinyobj::shape_t> TOshapes;
+	vector<tinyobj::material_t> objMaterials;
+	string errStr;
+	bool rc = tinyobj::LoadObj(TOshapes, objMaterials, errStr, meshName.c_str());
+	if (! rc)
+	{
+		cerr << errStr << endl;
+	}
+	else 
+	{
+	    int totalShapes = TOshapes.size();
+		for (int i = 0; i < totalShapes; ++i)
+		{
+			shape = make_shared<Shape>();
+			shape->createShape(TOshapes[i]);
+			shape->measure();
+			shape->init();
+			shapes->push_back(shape);
+			updateBounds(i, shape, gMin, gMax);
+		}
+	}	
+}
+
+// Updates global min and max coordinates for each shape
+void updateBounds(int i, const shared_ptr<Shape> shape,
+				  glm::vec3 *gMin, glm::vec3 *gMax)
+{
+	if (i == 0)
+	{
+		gMin->x = shape->min.x;
+		gMin->y = shape->min.y;
+		gMin->z = shape->min.z;
+		gMax->x = shape->max.x;
+		gMax->y = shape->max.y;
+		gMax->z = shape->max.z;
+	}
+	if (shape->min.x < gMin->x)
+		gMin->x = shape->min.x;
+	if (shape->min.y < gMin->y)
+		gMin->y = shape->min.y;
+	if (shape->min.z < gMin->z)
+		gMin->z = shape->min.z;
+	if (shape->max.x > gMax->x)
+		gMax->x = shape->max.x;
+	if (shape->max.y > gMax->y)
+		gMax->y = shape->max.y;
+	if (shape->max.z > gMax->z)
+		gMax->z = shape->max.z;
+}
+
 /* copy the data from the shape to this object */
 void Shape::createShape(tinyobj::shape_t & shape)
 {
@@ -192,59 +349,4 @@ void Shape::draw(const shared_ptr<Program> prog) const
 	GLSL::disableVertexAttribArray(h_pos);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-// Load geometry of a multiple shape mesh
-void loadMultipleShapeMesh(shared_ptr<vector<shared_ptr<Shape>>> shapes,
-			  glm::vec3 *gMin, glm::vec3 *gMax, const string &meshName)
-{
-	shared_ptr<Shape> shape;
-	vector<tinyobj::shape_t> TOshapes;
-	vector<tinyobj::material_t> objMaterials;
-	string errStr;
-	bool rc = tinyobj::LoadObj(TOshapes, objMaterials, errStr, meshName.c_str());
-	if (! rc)
-	{
-		cerr << errStr << endl;
-	}
-	else 
-	{
-	    int totalShapes = TOshapes.size();
-		for (int i = 0; i < totalShapes; ++i)
-		{
-			shape = make_shared<Shape>();
-			shape->createShape(TOshapes[i]);
-			shape->measure();
-			shape->init();
-			shapes->push_back(shape);
-			updateBounds(i, shape, gMin, gMax);
-		}
-	}	
-}
-
-// Updates global min and max coordinates for each shape
-void updateBounds(int i, const shared_ptr<Shape> shape,
-				  glm::vec3 *gMin, glm::vec3 *gMax)
-{
-	if (i == 0)
-	{
-		gMin->x = shape->min.x;
-		gMin->y = shape->min.y;
-		gMin->z = shape->min.z;
-		gMax->x = shape->max.x;
-		gMax->y = shape->max.y;
-		gMax->z = shape->max.z;
-	}
-	if (shape->min.x < gMin->x)
-		gMin->x = shape->min.x;
-	if (shape->min.y < gMin->y)
-		gMin->y = shape->min.y;
-	if (shape->min.z < gMin->z)
-		gMin->z = shape->min.z;
-	if (shape->max.x > gMax->x)
-		gMax->x = shape->max.x;
-	if (shape->max.y > gMax->y)
-		gMax->y = shape->max.y;
-	if (shape->max.z > gMax->z)
-		gMax->z = shape->max.z;
 }

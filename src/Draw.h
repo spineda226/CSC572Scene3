@@ -5,8 +5,8 @@
 
 class Program;
 class Shape;
+class Texture;
 class MatrixStack;
 
 void SetMaterial(const std::shared_ptr<Program> prog, int i);
-
 #endif
