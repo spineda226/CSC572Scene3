@@ -15,6 +15,8 @@
 #include "GLTextureWriter.h"
 #include "Draw.h"
 #include "Miles.h"
+#include "Particle.h"
+#include "math.h"
 
 // value_ptr for glm
 #include <glm/gtc/type_ptr.hpp>
@@ -53,11 +55,13 @@ public:
 	//example data that might be useful when trying to compute bounds on multi-shape
 	vec3 gMin;
 	vec3 gMax;
+	vec3 tMin;
+	vec3 tMax;
 	float lightPosX;
 	float testRotate = 0;
 	float saveTestRotate = 0;
 	float translateX = -4;
-	float translateZ = -6;
+	float translateZ = -8;
 	float tempCount = 0;
 	float headSideToSide = 0;
 	float bodySideToSide = 0;
@@ -76,6 +80,9 @@ public:
 
 	// texture for skymap
 	unsigned int cubeMapTexture;
+
+	// trash
+	vector<shared_ptr<Particle>> particles;
 
 	float beta = 0;
 	float alpha = 0; 
@@ -280,6 +287,36 @@ public:
 		cubeProg->addAttribute("vertNor");
 	 }
 
+	void updateTrash() {
+		for (shared_ptr<Particle> p : particles) {
+			if (sqrt((pow(p->position.x - translateX, 2)) + (pow(p->position.z - translateZ, 2))) < 1) {
+				if (translateX < p->position.x) {
+					p->velocity = vec3(.1, 0, 0);
+				}
+				else {
+					p->velocity = vec3(-.1, 0, 0);
+				}
+			}
+			p->position = vec3(p->position.x + p->velocity.x, p->position.y + p->velocity.y, p->position.z + p->velocity.z);
+		}
+	}
+
+	void initTrash() {
+		vector<vec3> positions;
+		positions.push_back(vec3(-1, -1, -7));
+		positions.push_back(vec3(-1.5, -1, -8));
+		positions.push_back(vec3(1, -1, -6.5));
+		positions.push_back(vec3(-1, -1, -5));
+
+		for (int i = 0; i < 4; i++) {
+			shared_ptr<Particle> p = make_shared<Particle>();
+			p->position = positions[i];
+			p->velocity = vec3(0, 0, 0);
+			particles.push_back(p);
+		}
+		shared_ptr<Particle> p = make_shared<Particle>();
+	}
+
 	void initGeom(const std::string& resourceDirectory)
 	{
 		cube = make_shared<Shape>();
@@ -288,7 +325,41 @@ public:
  		milesShapes = make_shared<vector<shared_ptr<Shape>>>();
 		loadMultipleShapeMesh(milesShapes, &gMin, &gMax, resourceDirectory + "/MilesWithoutHat.obj");	
 		milesWithHatShapes = make_shared<vector<shared_ptr<Shape>>>();
-		loadMultipleShapeMesh(milesWithHatShapes, &gMin, &gMax, resourceDirectory + "/MilesWithHat.obj");	
+		loadMultipleShapeMesh(milesWithHatShapes, &gMin, &gMax, resourceDirectory + "/MilesWithHat.obj");
+	}
+
+	void drawFloor(shared_ptr<MatrixStack> Model) {
+		Model->pushMatrix();
+		Model->translate(vec3(0, -2, 0));
+		Model->scale(vec3(60, .05, 60));
+		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+		SetMaterial(prog, 2);
+		cube->draw(prog);
+		Model->popMatrix();
+	}
+	void drawTrash(shared_ptr<MatrixStack> Model) {
+		//draw trash bin
+		Model->pushMatrix();
+		Model->translate(vec3(3, -2, -4));
+		Model->scale(vec3(2, 5, 2));
+		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+		SetMaterial(prog, 4);
+		cube->draw(prog);
+		Model->popMatrix();
+
+		updateTrash();
+		//draw trash
+		for (shared_ptr<Particle> p : particles) {
+			
+			Model->pushMatrix();
+			Model->translate(p->position);
+			Model->scale(vec3(.2, .2, .2));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+			SetMaterial(prog, 5);
+			cube->draw(prog);
+			Model->popMatrix();
+		}
+
 	}
 
 	void render()
@@ -369,7 +440,7 @@ public:
 		// Draw miles
 		Model->pushMatrix();
 			Model->loadIdentity();
-			Model->translate(vec3(translateX,0, translateZ));
+			Model->translate(vec3(translateX,-1, translateZ));
 			Model->rotate(rotateMiles.x, vec3(1, 0, 0)); // axis left and right through body
 			Model->rotate(rotateMiles.z, vec3(0, 0, 1));
 			Model->rotate(PI/2 + testRotate, vec3(0, 1, 0)); // axis up and down through head
@@ -579,7 +650,8 @@ public:
 			animatePart(&R1K.z, 0, 1, true, 50);
 			animatePart(&R1S.z, 0, 1, true, 50);
 		}
-
+		drawTrash(Model);
+		drawFloor(Model);
 		prog->unbind();
 
 		//draw the sky box
@@ -630,6 +702,7 @@ int main(int argc, char **argv)
 
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
+	application->initTrash();
 
 	// Loop until the user closes the window.
 	while (! glfwWindowShouldClose(windowManager->getHandle()))

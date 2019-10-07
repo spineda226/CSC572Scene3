@@ -180,14 +180,14 @@ void animatePart(float *primary, float previous, float next, bool cond, float nu
 	{
 		if (*primary > next)
 			*primary = next;
-		else if (cond && not(floatEqual(*primary, next)))
+		else if (cond && !(floatEqual(*primary, next)))
 			*primary += abs(previous-next)/numIncrements;
 	}
 	else // decrement
 	{
 		if (*primary < next)
 			*primary = next;
-		else if (cond && not(floatEqual(*primary, next)))
+		else if (cond && !(floatEqual(*primary, next)))
 			*primary -= abs(previous-next)/numIncrements;
 	}
 }

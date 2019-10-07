@@ -41,5 +41,17 @@ void SetMaterial(const shared_ptr<Program> prog, int i)
 		glUniform3f(prog->getUniform("MatSpec"), 0.727811, 0.62695, 0.62695);
 		glUniform1f(prog->getUniform("shine"), 76.8);
 		break;
+		case 4: // green
+		glUniform3f(prog->getUniform("MatAmb"), 0.1745, 0.01175, 0.01175);
+		glUniform3f(prog->getUniform("MatDif"), 0.1, 0.6, 0.1);
+		glUniform3f(prog->getUniform("MatSpec"), 0.727811, 0.62695, 0.62695);
+		glUniform1f(prog->getUniform("shine"), 76.8);
+		break;
+		case 5: // blue
+		glUniform3f(prog->getUniform("MatAmb"), 0.05, 0.05, 0.2);
+		glUniform3f(prog->getUniform("MatDif"), 0.0, 0.1, 0.9);
+		glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.3, 0.4);
+		glUniform1f(prog->getUniform("shine"), 20.);
+		break;
 	}
 }
