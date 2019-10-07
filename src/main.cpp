@@ -340,8 +340,8 @@ public:
 	void drawTrash(shared_ptr<MatrixStack> Model) {
 		//draw trash bin
 		Model->pushMatrix();
-		Model->translate(vec3(3, -2, -4));
-		Model->scale(vec3(2, 5, 2));
+		Model->translate(vec3(3, -2, -3));
+		Model->scale(vec3(2, 4, 2));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
 		SetMaterial(prog, 4);
 		cube->draw(prog);
@@ -608,7 +608,7 @@ public:
 			animatePart(&tempCount, 0, 20, pauses < 5, 200);
 			legRotate = tempCount;
 			animatePart(&translateX, 3, 0, pauses < 5, 200);
-			animatePart(&translateZ, -6, -3, pauses < 5, 200);
+			animatePart(&translateZ, -8, -4, pauses < 5, 200);
 			animatePart(&testRotate, 3*PI/4, 3*PI, translateX < 1, 50);
 			if (floatEqual(translateX, 0))
 			{
