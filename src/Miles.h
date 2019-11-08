@@ -61,6 +61,8 @@ class Miles
 
 		void setupPart(const std::shared_ptr<std::vector<std::shared_ptr<Shape>>> shape,
 					   std::shared_ptr<MatrixStack> Model, int i, int pivot, glm::vec3 *angle);
+		void setupPartWithScale(const std::shared_ptr<std::vector<std::shared_ptr<Shape>>> shape,
+					   std::shared_ptr<MatrixStack> Model, int i, int pivot, glm::vec3 *angle, glm::vec3 *scale);
 		void drawLeg(const std::shared_ptr<Program> prog, 
 				     const std::shared_ptr<std::vector<std::shared_ptr<Shape>>> shapes,
 					 std::shared_ptr<MatrixStack> Model, int i, 
@@ -84,6 +86,7 @@ class Miles
 		animVec L1S;
 		animVec R1K;
 		animVec R1S;
+		animVec eyeScale;
 
 		glm::vec3 shift;
 		glm::vec3 scale;

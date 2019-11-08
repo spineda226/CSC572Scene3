@@ -88,6 +88,7 @@ void Miles::updateAnimVars()
 	updateAnimVec(&L1S);
 	updateAnimVec(&R1K);
 	updateAnimVec(&R1S);
+	updateAnimVec(&eyeScale);
 	tempCount.prev = tempCount.cur;
 	legRotate.prev = legRotate.cur;
 	pauses.prev = pauses.cur;
@@ -97,9 +98,10 @@ void Miles::updateAnimVars()
 
 void Miles::initStartingPosition()
 {
-	initAnimVec(&translate, -4, -1, -6);
+	initAnimVec(&translate, -4, -0.4, -4.1);
 	initAnimVec(&rotateHead, 0, 0, PI/4);
-	positionCount = 1;
+	initAnimVec(&eyeScale, 1, 1, 1);
+	positionCount = 5;
 	tempCount = {0};
 	headSideToSide = {0};
 	pauses = {0};
@@ -200,6 +202,28 @@ void Miles::setupPart(const shared_ptr<vector<shared_ptr<Shape>>> shapes,
 		Model->translate(vec3(-x, -y, -z));
 }
 
+// scale a piece and pivot around given part 
+void Miles::setupPartWithScale(const shared_ptr<vector<shared_ptr<Shape>>> shapes,
+			   shared_ptr<MatrixStack> Model, int i, int pivot, vec3 *angle, vec3 *scale)
+{
+	float x = calculateShift(shapes->at(pivot)->min.x, shapes->at(pivot)->max.x);
+	float y = calculateShift(shapes->at(pivot)->min.y, shapes->at(pivot)->max.y);
+	float z = calculateShift(shapes->at(pivot)->min.z, shapes->at(pivot)->max.z);
+
+	float x_i = calculateShift(shapes->at(i)->min.x, shapes->at(i)->max.x);
+	float y_i = calculateShift(shapes->at(i)->min.y, shapes->at(i)->max.y);
+	float z_i = calculateShift(shapes->at(i)->min.z, shapes->at(i)->max.z);
+	Model->pushMatrix();
+		Model->translate(vec3(x, y, z));
+		Model->rotate(angle->z, vec3(0, 0, 1));
+		Model->rotate(angle->y, vec3(0, 1, 0));
+		Model->rotate(angle->x, vec3(1, 0, 0));
+		Model->translate(vec3(-x, -y, -z));
+		Model->translate(vec3(x_i, y_i, z_i));
+		Model->scale(*scale);
+		Model->translate(vec3(-x_i, -y_i, -z_i));
+}
+
 // draws leg rotated around waste, lower leg rotated around knee
 void Miles::drawLeg(const shared_ptr<Program> prog, 
 			 const shared_ptr<vector<shared_ptr<Shape>>> shapes,
@@ -253,6 +277,7 @@ float Miles::getTranslateZ() { return translate.z.cur; };
 
 void Miles::updatePosition()
 {
+	/*
 	if (positionCount == 1) // Roll Over
 	{
 		animatePart(&rotateMiles.y, -6*PI, true, 60);
@@ -326,6 +351,21 @@ void Miles::updatePosition()
 			updateAnimVars();
 		}
 	}
+	*/
+	if (positionCount == 5) // move to trash and get hat
+	{
+		positionCount++;
+		this->shapes = this->nextShapes;
+		this->shift = this->nextShift;
+		tempCount = {0, 0};
+		legRotate = {0, 0};
+		translate.x.cur = 3;
+		armRotate = 0;
+		shoulderRotate = 0;
+		initAnimVec(&rotateHead, 0, 0, 0);
+		initAnimVec(&rotateMiles, 0, 5*PI/4, 0);
+		updateAnimVars();
+	}
 	else if (positionCount == 6) // walk out on two legs
 	{
 		animatePart(&pauses, -10, true, 400);
@@ -377,7 +417,38 @@ void Miles::updatePosition()
 		animatePart(&R1K.y, -1, true, 50);
 		animatePart(&R1K.z, 1, true, 50);
 		animatePart(&R1S.z, 1, true, 50);
+		if (floatEqual(R1S.z.cur, R1S.z.prev + 1))
+		{
+			positionCount++;
+			updateAnimVars();
+		}
 	}
+	else if (positionCount == 10) // put hands down make eyes big
+	{
+		animatePart(&pauses, 10, true, 200);
+		animatePart(&headSideToSide, -1.5, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&L1K.z, -1.6, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&L1S.x, -0.8, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&L1S.y, -0.8, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&R1K.y, 1, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&R1K.z, -1, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&R1S.z, -1, pauses.cur > pauses.prev + 2.5, 50);
+		animatePart(&eyeScale.x, 0.5, pauses.cur > pauses.prev + 7.5, 5);
+		animatePart(&eyeScale.y, 0.5, pauses.cur > pauses.prev + 7.5, 5);
+		animatePart(&eyeScale.z, 0.5, pauses.cur > pauses.prev + 7.5, 5);
+		if (floatEqual(pauses.cur, pauses.prev + 10))
+		{
+			positionCount++;
+			updateAnimVars();
+		}
+	}
+	else if (positionCount == 11) // run toward portal
+	{
+		animatePart(&tempCount, -25, true, 100);
+		legRotate = tempCount;
+		animatePart(&translate.z, 3.1, true, 25);
+	}
+
 }
 
 void Miles::draw(const std::shared_ptr<Program> prog)
@@ -411,12 +482,22 @@ void Miles::draw(const std::shared_ptr<Program> prog)
 				vec3 bodyRotate = vec3(-0.2*abs(sin(bodySideToSide.cur)), 0, 0);
 				setupPart(shapes, Model, i, 0, &bodyRotate); 
 			}
-			if ((i >= 1 && i <= 5) || i == 38)
+			if ((i >= 1 && i <= 5) || i == 38) // Head
 			{
 				vec3 headRotate = vec3(rotateHead.x.cur + sin(headSideToSide.cur)/4, rotateHead.y.cur + PI*sin(headSideToSide.cur)/4, rotateHead.z.cur);
-				setupPart(shapes, Model, i, 1, &headRotate);
-				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
-				shapes->at(i)->draw(prog);	
+				if (i == 2 || i == 4) // eyes
+				{
+					vec3 eye_sc = vec3(eyeScale.x.cur, eyeScale.y.cur, eyeScale.z.cur);
+					setupPartWithScale(shapes, Model, i, 1, &headRotate, &eye_sc);
+					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+					shapes->at(i)->draw(prog);	
+				}
+				else
+				{
+					setupPart(shapes, Model, i, 1, &headRotate);
+					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+					shapes->at(i)->draw(prog);	
+				}
 				Model->popMatrix();
 			}
 			else if (isLeftLeg1(i))

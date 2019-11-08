@@ -43,6 +43,7 @@ public:
 	Miles miles; // steven
 	shared_ptr<vector<shared_ptr<Shape>>> milesWithoutHatShapes; // steven
 	shared_ptr<vector<shared_ptr<Shape>>> milesWithHatShapes; // steven
+	shared_ptr<vector<shared_ptr<Shape>>> subwayShapes; // steven
 	shared_ptr<Shape> cube;
 
 	// Contains vertex information for OpenGL
@@ -55,12 +56,18 @@ public:
 	vec3 milesgMin; // steven
 	vec3 milesgMax; // steven
 
+	vec3 subwaygMin; // steven
+	vec3 subwaygMax; // steven
+	vec3 subwayScale; // steven
+	vec3 subwayShift; // steven
+
 	// texture for skymap
 	unsigned int cubeMapTexture;
 
 	// trash
 	vector<shared_ptr<Particle>> particles;
 
+    int test = 0;
 	float beta = 0;
 	float alpha = 0; 
 	float speed = 0;
@@ -115,6 +122,14 @@ public:
 			view = normalize(LA - eye);
 			eye = eye + vec3(speed)*view;
 		    LA = vec3(cos(alpha)*cos(beta), sin(alpha), cos(alpha)*cos(PI/2 - beta)) + eye;
+		}
+		else if (key == GLFW_KEY_V && action == GLFW_PRESS) // move down
+		{
+			test += 1;
+		}
+		else if (key == GLFW_KEY_X && action == GLFW_PRESS) // move down
+		{
+			test -= 1;
 		}
 	}
 
@@ -197,7 +212,8 @@ public:
 		GLSL::checkVersion();
 
 		// Set background color.
-		glClearColor(.12f, .34f, .56f, 1.0f);
+		//glClearColor(.12f, .34f, .56f, 1.0f);
+		glClearColor(.0f, .0f, .07f, 1.0f);
 		// Enable z-buffer test.
 		glEnable(GL_DEPTH_TEST);
 
@@ -301,6 +317,10 @@ public:
 		miles.initialize(milesWithoutHatShapes, &milesgMin, &milesgMax);
 		
 		miles.initStartingPosition();
+
+		subwayShapes = make_shared<vector<shared_ptr<Shape>>>();
+		loadMultipleShapeMesh(subwayShapes, &subwaygMin, &subwaygMax, resourceDirectory + "/Sewer_Scene.obj");
+		getShiftAndScale(&subwayShift, &subwayScale, &subwaygMin, &subwaygMax);
 	}
 
 	void drawFloor(shared_ptr<MatrixStack> Model) {
@@ -366,15 +386,79 @@ public:
 		glUniform3f(prog->getUniform("lightCol"), 1, 1, 1);
 		glUniform3f(prog->getUniform("eye"), eye.x, eye.y, eye.z);
 
+		/*
+		0: sides
+		1: top
+		2: lower pipe side
+		3: floor
+		4: left pipe top
+		5: 
+		6:
+		7: light covers
+		8: lights
+		9: right pipe
+		10: top rail
+		11: left weird thing
+		12: under railroad 
+		13: top railroad
+		14: tracks
+		*/
+		/* Draw Subway */ 
+		Model->pushMatrix();
+		Model->loadIdentity();
+		Model->translate(vec3(10, 200*subwayScale.y*(subwaygMax.y - subwaygMin.y)/2 -1.4, 0));
+		Model->rotate(radians(0.f), vec3(0, 1, 0));
+		Model->scale(vec3(200, 200, 300)*subwayScale);
+		Model->translate(vec3(-1,-1,-1)*subwayShift);
+		//SetMaterial(prog, 6);		
+		int shapesSize = subwayShapes->size();
+		for (int i = 0; i < shapesSize; ++i)
+		{
+			if (i == 1 || i == 3)
+				SetMaterial(prog, 8);
+			else if (i == 0)
+				SetMaterial(prog, 9);
+			else if (i == 8)
+				SetMaterial(prog, 11);
+			else
+				SetMaterial(prog, 10);
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+			subwayShapes->at(i)->draw(prog);	
+		}
+		Model->popMatrix();
+		/*
+		Model->pushMatrix();
+		Model->translate(vec3(0, 200*subwayScale.y*(subwaygMax.y - subwaygMin.y)/2 -2, -406));
+		//Model->rotate(radians(-30.f), vec3(0, 1, 0));
+		Model->scale(vec3(200, 200, 300)*subwayScale);
+		Model->translate(vec3(-1,-1,-1)*subwayShift);
+		//SetMaterial(prog, 6);		
+		for (int i = 0; i < shapesSize; ++i)
+		{
+			if (i == 1 || i == 3)
+				SetMaterial(prog, 8);
+			else if (i == 0)
+				SetMaterial(prog, 9);
+			else if (i == 8)
+				SetMaterial(prog, 11);
+			else
+				SetMaterial(prog, 10);
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(Model->topMatrix()));
+			subwayShapes->at(i)->draw(prog);	
+		}
+		Model->popMatrix();
+		 Draw Subway */
+
 		// Draw miles
 		miles.draw(prog); // steven
 		miles.updatePosition(); // steve
 		
-		drawTrash(Model);
-		drawFloor(Model);
+		//drawTrash(Model);
+		//drawFloor(Model);
 		prog->unbind();
 
 		//draw the sky box
+		/*
 		cubeProg->bind();
 		glUniformMatrix4fv(cubeProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(cubeProg->getUniform("V"), 1, GL_FALSE, value_ptr(V));
@@ -387,10 +471,11 @@ public:
 			Model->scale(vec3(100));
 			glUniformMatrix4fv(cubeProg->getUniform("M"), 1, GL_FALSE,value_ptr(Model->topMatrix()) );
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
-			cube->draw(cubeProg);
+			//cube->draw(cubeProg);
 		glDepthFunc(GL_LESS);
 		Model->popMatrix();
 		cubeProg->unbind();
+		*/
 
 		P->popMatrix();
 		speed = 0;
