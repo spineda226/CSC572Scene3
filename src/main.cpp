@@ -17,6 +17,8 @@
 #include "Miles.h"
 #include "Particle.h"
 #include "math.h"
+#include "stb_image.h"
+#include "stb_image_write.h"
 
 // value_ptr for glm
 #include <glm/gtc/type_ptr.hpp>
@@ -72,6 +74,8 @@ public:
 	float alpha = 0; 
 	float speed = 0;
 	int drawMode = 0;
+	int frameCount = 0;
+	int renderCount = 0;
 
 	vec3 eye;
 	vec3 LA;
@@ -356,7 +360,7 @@ public:
 		}
 	}
 
-	void render()
+	void render(bool writeFrame)
 	{
 		// Get current frame buffer size.
 		int width, height;
@@ -479,6 +483,22 @@ public:
 
 		P->popMatrix();
 		speed = 0;
+		
+		if (writeFrame)
+		{
+			GLsizei nrChannels = 3;
+		    GLsizei stride = nrChannels * width;
+		    stride += (stride % 4) ? (4 - stride % 4) : 0;
+		    GLsizei bufferSize = stride * height;
+		    std::vector<char> buffer(bufferSize);
+		    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+		    glReadBuffer(GL_FRONT);
+		    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+		    stbi_flip_vertically_on_write(true);
+		    string filename =  "frame" + std::to_string(frameCount++) + ".png";
+		    stbi_write_png(filename.c_str(), width, height, nrChannels, buffer.data(), stride);
+	    }
+	    //renderCount++;
 	}	
 };
 
@@ -509,15 +529,44 @@ int main(int argc, char **argv)
 	application->initGeom(resourceDir);
 	application->initTrash();
 
+	auto lastTime = chrono::high_resolution_clock::now();
+	bool writeFrame = false;
+
+
 	// Loop until the user closes the window.
 	while (! glfwWindowShouldClose(windowManager->getHandle()))
 	{
-			// Render scene.
-			application->render();
-			// Swap front and back buffers.
-			glfwSwapBuffers(windowManager->getHandle());
-			// Poll for and process events.
-			glfwPollEvents();
+		// save current time for next frame
+		auto nextLastTime = chrono::high_resolution_clock::now();
+
+		// get time since last frame
+		float deltaTime =
+			chrono::duration_cast<std::chrono::microseconds>(
+				chrono::high_resolution_clock::now() - lastTime)
+				.count();
+
+		// convert microseconds (weird) to seconds (less weird)
+		deltaTime *= 0.000001;
+		cout << deltaTime << endl;		
+		if (deltaTime > 1/24) // frames per second
+		{
+			writeFrame = true;
+			lastTime = nextLastTime;
+		}
+
+		// reset lastTime so that we can calculate the deltaTime
+		// on the next frame
+		//lastTime = nextLastTime;
+
+		// Render scene.
+		application->render(writeFrame);
+		writeFrame = false;
+
+
+		// Swap front and back buffers.
+		glfwSwapBuffers(windowManager->getHandle());
+		// Poll for and process events.
+		glfwPollEvents();
 	}
 
 	// Quit program.
